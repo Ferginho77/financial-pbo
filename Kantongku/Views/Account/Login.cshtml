@@ -1,0 +1,34 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Masuk";
+    Layout = "_AuthLayout";
+}
+
+<h1 class="auth__title">Selamat datang kembali</h1>
+<p class="auth__subtitle">Masuk untuk melihat saldo dan kantong Anda.</p>
+
+<form asp-action="Login" method="post" class="form" novalidate>
+    <input type="hidden" asp-for="ReturnUrl" />
+    <div asp-validation-summary="ModelOnly" class="alert alert--error"></div>
+
+    <div class="field">
+        <label asp-for="Email" class="field__label"></label>
+        <input asp-for="Email" class="input" type="email" autocomplete="email" placeholder="nama@email.com" autofocus />
+        <span asp-validation-for="Email" class="field__error"></span>
+    </div>
+
+    <div class="field">
+        <label asp-for="Password" class="field__label"></label>
+        <input asp-for="Password" class="input" autocomplete="current-password" placeholder="Masukkan kata sandi" />
+        <span asp-validation-for="Password" class="field__error"></span>
+    </div>
+
+    <label class="check">
+        <input asp-for="RememberMe" type="checkbox" />
+        <span>Ingat saya di perangkat ini</span>
+    </label>
+
+    <button type="submit" class="btn btn--primary btn--block btn--lg">Masuk</button>
+</form>
+
+<p class="auth__switch">Belum punya akun? <a asp-action="Register">Daftar gratis</a></p>

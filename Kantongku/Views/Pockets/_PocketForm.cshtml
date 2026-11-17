@@ -1,0 +1,48 @@
+@model PocketFormViewModel
+@{
+    var colors = new (string Key, string Label)[]
+    {
+        ("navy", "Navy"), ("amber", "Amber"), ("emerald", "Emerald"),
+        ("sky", "Sky"), ("rose", "Rose"), ("slate", "Slate")
+    };
+}
+
+<div asp-validation-summary="ModelOnly" class="alert alert--error"></div>
+
+<div class="field">
+    <label asp-for="Name" class="field__label"></label>
+    <input asp-for="Name" class="input" maxlength="80" placeholder="Contoh: Pengeluaran Bulanan" autofocus />
+    <span asp-validation-for="Name" class="field__error"></span>
+</div>
+
+<div class="field">
+    <label asp-for="Description" class="field__label">Deskripsi <span class="muted">(opsional)</span></label>
+    <textarea asp-for="Description" class="input" rows="3" maxlength="255" placeholder="Untuk apa kantong ini digunakan?"></textarea>
+    <span asp-validation-for="Description" class="field__error"></span>
+</div>
+
+<div class="field">
+    <label for="pocket-target" class="field__label">Target saldo <span class="muted">(opsional)</span></label>
+    <div class="money">
+        <span class="money__prefix">Rp</span>
+        <input id="pocket-target" name="TargetAmount" class="input money__input" type="text" inputmode="numeric" autocomplete="off" placeholder="0" data-rupiah value="@Model.TargetAmount.ToInputValue()" />
+    </div>
+    <span class="field__hint">Opsional. Cocok untuk melacak progres tabungan atau dana darurat.</span>
+    <span asp-validation-for="TargetAmount" class="field__error"></span>
+</div>
+
+<div class="field">
+    <span class="field__label">Warna kartu</span>
+    <div class="swatches" role="radiogroup" aria-label="Warna kartu">
+        @foreach (var c in colors)
+        {
+            <label class="swatch pk-@c.Key" title="@c.Label">
+                <input type="radio" name="Color" value="@c.Key" checked="@(Model.Color == c.Key)" />
+                <span class="swatch__pill">
+                    <span class="swatch__dot"></span>
+                    <span class="swatch__label">@c.Label</span>
+                </span>
+            </label>
+        }
+    </div>
+</div>

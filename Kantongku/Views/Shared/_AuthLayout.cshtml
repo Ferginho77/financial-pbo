@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0F172A" />
+    <title>@ViewData["Title"] · Kantongku</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/fintech.css" asp-append-version="true" />
+</head>
+<body class="auth-body">
+    <div class="auth">
+        <aside class="auth__brand">
+            <a class="brand brand--light" asp-controller="Home" asp-action="Index">
+                <span class="brand__mark">K</span>
+                <span class="brand__name">Kantongku</span>
+            </a>
+
+            <div class="auth__pitch">
+                <h2>Uang tertata rapi,<br />dalam kantong yang jelas.</h2>
+                <p>Pisahkan dana darurat, pengeluaran bulanan, dan tabungan. Ajak keluarga atau pasangan mengelola satu kantong bersama dengan hak akses yang terkontrol.</p>
+
+                <ul class="auth__points">
+                    <li><span>@Icons.Get("wallet", 18)</span> Banyak kantong dengan saldo terpisah</li>
+                    <li><span>@Icons.Get("users", 18)</span> Kantong bersama dengan peran Owner, Spender &amp; Viewer</li>
+                    <li><span>@Icons.Get("shield", 18)</span> Setiap transaksi tercatat siapa pelakunya</li>
+                </ul>
+            </div>
+
+            <p class="auth__legal">Data keuangan Anda hanya dapat diakses oleh anggota kantong yang Anda undang.</p>
+        </aside>
+
+        <section class="auth__panel">
+            <div class="auth__card">
+                @RenderBody()
+            </div>
+        </section>
+    </div>
+
+    <script src="~/js/site.js" asp-append-version="true"></script>
+</body>
+</html>

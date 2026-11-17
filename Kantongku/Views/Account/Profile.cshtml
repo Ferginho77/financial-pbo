@@ -1,0 +1,74 @@
+@model ProfileViewModel
+@{
+    ViewData["Title"] = "Pengaturan Profil";
+}
+
+<a class="back-link" asp-controller="Home" asp-action="Index">@Icons.Get("arrow-left", 16) Dashboard</a>
+
+<div class="page-head">
+    <div>
+        <h1>Pengaturan akun</h1>
+        <p class="muted">Perbarui nama tampilan yang muncul pada audit trail Kantong Bersama atau ubah kata sandi Anda.</p>
+    </div>
+</div>
+
+<div class="profile-grid">
+    <section class="card">
+        <div class="profile-header">
+            <span class="avatar avatar--lg">@Formatting.Initials(Model.Info.DisplayName)</span>
+            <div>
+                <h2>@Model.Info.DisplayName</h2>
+                <p class="muted small">@Model.Email · Bergabung @Model.CreatedAt.ToIdDate()</p>
+            </div>
+        </div>
+
+        <form asp-action="UpdateProfile" method="post" class="form" novalidate>
+            <div class="field">
+                <label class="field__label">Email terdaftar</label>
+                <input class="input" type="email" value="@Model.Email" disabled />
+                <span class="field__hint">Email digunakan untuk masuk dan menerima undangan Kantong Bersama.</span>
+            </div>
+
+            <div class="field">
+                <label asp-for="Info.DisplayName" class="field__label"></label>
+                <input asp-for="Info.DisplayName" class="input" maxlength="100" />
+                <span asp-validation-for="Info.DisplayName" class="field__error"></span>
+            </div>
+
+            <div class="form__actions">
+                <button type="submit" class="btn btn--primary">Simpan Nama</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2 class="card__title">@Icons.Get("lock", 18) Keamanan &amp; Kata Sandi</h2>
+        <p class="muted small" style="margin: 6px 0 16px;">Gunakan minimal 6 karakter yang tidak mudah ditebak.</p>
+
+        <form asp-action="ChangePassword" method="post" class="form" novalidate>
+            <div asp-validation-summary="ModelOnly" class="alert alert--error"></div>
+
+            <div class="field">
+                <label asp-for="Password.CurrentPassword" class="field__label"></label>
+                <input asp-for="Password.CurrentPassword" class="input" autocomplete="current-password" />
+                <span asp-validation-for="Password.CurrentPassword" class="field__error"></span>
+            </div>
+
+            <div class="field">
+                <label asp-for="Password.NewPassword" class="field__label"></label>
+                <input asp-for="Password.NewPassword" class="input" autocomplete="new-password" />
+                <span asp-validation-for="Password.NewPassword" class="field__error"></span>
+            </div>
+
+            <div class="field">
+                <label asp-for="Password.ConfirmPassword" class="field__label"></label>
+                <input asp-for="Password.ConfirmPassword" class="input" autocomplete="new-password" />
+                <span asp-validation-for="Password.ConfirmPassword" class="field__error"></span>
+            </div>
+
+            <div class="form__actions">
+                <button type="submit" class="btn btn--primary">Ubah Kata Sandi</button>
+            </div>
+        </form>
+    </section>
+</div>

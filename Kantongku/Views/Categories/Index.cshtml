@@ -1,0 +1,138 @@
+@model List<ExpenseGroupViewModel>
+@{
+    ViewData["Title"] = "Kategori Pengeluaran";
+}
+
+<div class="page-head">
+    <div>
+        <h1>Kategori pengeluaran</h1>
+        <p class="muted">Kelompokkan pengeluaran berdasarkan sifat kebutuhan (Primer, Sekunder, dll), lalu tentukan alokasi spesifik di dalamnya.</p>
+    </div>
+</div>
+
+<form asp-action="CreateGroup" method="post" class="card inline-form" novalidate>
+    <div class="inline-form__text">
+        <strong>Tambah kelompok baru</strong>
+        <span class="muted small">Contoh: Investasi, Sosial, Pendidikan</span>
+    </div>
+    <input type="text" name="name" class="input" maxlength="60" placeholder="Nama kelompok" required aria-label="Nama kelompok baru" />
+    <button type="submit" class="btn btn--primary">@Icons.Get("plus", 16) Tambah Kelompok</button>
+</form>
+
+@if (Model.Count == 0)
+{
+    <div class="card empty-state">
+        <span class="empty-state__icon">@Icons.Get("tag", 28)</span>
+        <h3>Belum ada kelompok kategori</h3>
+        <p>Tambahkan kelompok pertama Anda (misalnya "Primer") agar bisa mencatat pengeluaran.</p>
+    </div>
+}
+else
+{
+    <div class="group-grid">
+        @foreach (var g in Model)
+        {
+            <section class="card group">
+                <header class="group__head">
+                    <div>
+                        <h2 class="group__name">
+                            <span class="group__dot" style="background:@ChartPalette.ForGroup(g.Name, g.Id)"></span>
+                            @g.Name
+                        </h2>
+                        <span class="muted small">
+                            @g.Categories.Count alokasi
+                            @if (g.MonthTotal > 0)
+                            {
+                                <text> · Bulan ini @g.MonthTotal.ToRupiah()</text>
+                            }
+                        </span>
+                    </div>
+                    <div class="group__tools">
+                        <button type="button" class="icon-btn" title="Ubah nama kelompok" aria-label="Ubah nama kelompok @g.Name"
+                                data-open-dialog="dlgRenameGroup" data-fill-id="@g.Id" data-fill-name="@g.Name">@Icons.Get("edit", 16)</button>
+                        <form asp-action="DeleteGroup" method="post" data-confirm="Hapus kelompok &quot;@g.Name&quot; beserta seluruh alokasinya? Riwayat transaksi tetap tersimpan.">
+                            <input type="hidden" name="id" value="@g.Id" />
+                            <button type="submit" class="icon-btn icon-btn--danger" title="Hapus kelompok" aria-label="Hapus kelompok @g.Name">@Icons.Get("trash", 16)</button>
+                        </form>
+                    </div>
+                </header>
+
+                @if (g.Categories.Count == 0)
+                {
+                    <p class="muted small group__empty">Belum ada alokasi di kelompok ini.</p>
+                }
+                else
+                {
+                    <ul class="cat-list">
+                        @foreach (var c in g.Categories)
+                        {
+                            <li class="cat">
+                                <div class="cat__info">
+                                    <span class="cat__name">@c.Name</span>
+                                    @if (c.MonthTotal > 0)
+                                    {
+                                        <span class="muted small">@c.MonthTotal.ToRupiah()</span>
+                                    }
+                                </div>
+                                <div class="cat__tools">
+                                    <button type="button" class="icon-btn" title="Ubah nama alokasi" aria-label="Ubah nama alokasi @c.Name"
+                                            data-open-dialog="dlgRenameCategory" data-fill-id="@c.Id" data-fill-name="@c.Name">@Icons.Get("edit", 15)</button>
+                                    <form asp-action="DeleteCategory" method="post" data-confirm="Hapus alokasi &quot;@c.Name&quot;? Riwayat transaksi tetap tersimpan.">
+                                        <input type="hidden" name="id" value="@c.Id" />
+                                        <button type="submit" class="icon-btn icon-btn--danger" title="Hapus alokasi" aria-label="Hapus alokasi @c.Name">@Icons.Get("trash", 15)</button>
+                                    </form>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+
+                <form asp-action="CreateCategory" method="post" class="group__add" novalidate>
+                    <input type="hidden" name="groupId" value="@g.Id" />
+                    <input type="text" name="name" class="input input--sm" maxlength="60" placeholder="Tambah alokasi baru…" required aria-label="Nama alokasi baru di @g.Name" />
+                    <button type="submit" class="btn btn--soft btn--sm">@Icons.Get("plus", 14) Tambah</button>
+                </form>
+            </section>
+        }
+    </div>
+}
+
+<dialog class="dialog dialog--sm" id="dlgRenameGroup">
+    <form asp-action="EditGroup" method="post" class="form">
+        <header class="dialog__head">
+            <h2>Ubah nama kelompok</h2>
+            <button type="button" class="icon-btn" data-close-dialog aria-label="Tutup">@Icons.Get("x", 18)</button>
+        </header>
+        <div class="dialog__body">
+            <input type="hidden" name="id" />
+            <div class="field">
+                <label class="field__label" for="renameGroupName">Nama kelompok</label>
+                <input id="renameGroupName" type="text" name="name" class="input" maxlength="60" required />
+            </div>
+        </div>
+        <footer class="dialog__foot">
+            <button type="button" class="btn btn--ghost" data-close-dialog>Batal</button>
+            <button type="submit" class="btn btn--primary">Simpan</button>
+        </footer>
+    </form>
+</dialog>
+
+<dialog class="dialog dialog--sm" id="dlgRenameCategory">
+    <form asp-action="EditCategory" method="post" class="form">
+        <header class="dialog__head">
+            <h2>Ubah nama alokasi</h2>
+            <button type="button" class="icon-btn" data-close-dialog aria-label="Tutup">@Icons.Get("x", 18)</button>
+        </header>
+        <div class="dialog__body">
+            <input type="hidden" name="id" />
+            <div class="field">
+                <label class="field__label" for="renameCategoryName">Nama alokasi</label>
+                <input id="renameCategoryName" type="text" name="name" class="input" maxlength="60" required />
+            </div>
+        </div>
+        <footer class="dialog__foot">
+            <button type="button" class="btn btn--ghost" data-close-dialog>Batal</button>
+            <button type="submit" class="btn btn--primary">Simpan</button>
+        </footer>
+    </form>
+</dialog>

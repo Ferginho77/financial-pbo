@@ -1,0 +1,23 @@
+@model PocketFormViewModel
+@{
+    ViewData["Title"] = "Kantong Baru";
+}
+
+<a class="back-link" asp-controller="Home" asp-action="Index">@Icons.Get("arrow-left", 16) Dashboard</a>
+
+<div class="narrow">
+    <div class="page-head page-head--stack">
+        <div>
+            <h1>Buat kantong baru</h1>
+            <p class="muted">Pisahkan dana sesuai tujuan. Anda bisa mengundang anggota lain setelah kantong dibuat.</p>
+        </div>
+    </div>
+
+    <form asp-action="Create" method="post" class="card form" novalidate>
+        <partial name="_PocketForm" model="Model" />
+        <div class="form__actions">
+            <a class="btn btn--ghost" asp-controller="Home" asp-action="Index">Batal</a>
+            <button type="submit" class="btn btn--primary">Simpan Kantong</button>
+        </div>
+    </form>
+</div>

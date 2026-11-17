@@ -1,0 +1,379 @@
+@model DashboardViewModel
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Dashboard";
+
+    var fullName = User.GetDisplayName();
+    var firstName = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "Pengguna";
+    var hour = DateTime.Now.Hour;
+    var greeting = hour < 11 ? "Selamat pagi" : hour < 15 ? "Selamat siang" : hour < 18 ? "Selamat sore" : "Selamat malam";
+
+    var hasExpense = Model.GroupBreakdown.Count > 0;
+    var totalGroupExpense = Model.GroupBreakdown.Sum(g => g.Amount);
+    var maxMonth = DateTime.Today.ToString("yyyy-MM");
+
+    var chartData = new
+    {
+        groups = new
+        {
+            labels = Model.GroupBreakdown.Select(g => g.Label).ToArray(),
+            values = Model.GroupBreakdown.Select(g => g.Amount).ToArray(),
+            colors = Model.GroupBreakdown.Select((g, i) => ChartPalette.ForGroup(g.Label, i)).ToArray()
+        },
+        categories = new
+        {
+            labels = Model.CategoryBreakdown.Select(c => c.Label).ToArray(),
+            values = Model.CategoryBreakdown.Select(c => c.Amount).ToArray(),
+            groups = Model.CategoryBreakdown.Select(c => c.Group).ToArray(),
+            colors = Model.CategoryBreakdown.Select(c =>
+            {
+                var idx = Model.GroupBreakdown.FindIndex(g => g.Label == c.Group);
+                return ChartPalette.ForGroup(c.Group, Math.Max(idx, 0));
+            }).ToArray()
+        }
+    };
+}
+
+<div class="page-head">
+    <div>
+        <p class="eyebrow">@DateTime.Now.ToIdLongDate()</p>
+        <h1>@greeting, @firstName</h1>
+        <p class="muted">Ringkasan seluruh kantong pribadi dan kantong bersama Anda.</p>
+    </div>
+    <a class="btn btn--primary" asp-controller="Pockets" asp-action="Create">@Icons.Get("plus", 16) Kantong Baru</a>
+</div>
+
+<section class="hero" aria-label="Ringkasan saldo">
+    <div class="hero__main">
+        <span class="hero__label">Total saldo gabungan</span>
+        <h2 class="hero__amount">@Model.TotalBalance.ToRupiah()</h2>
+        <div class="hero__split">
+            <div>
+                <span>Kantong Pribadi</span>
+                <strong>@Model.PersonalBalance.ToRupiah()</strong>
+            </div>
+            <div>
+                <span>Kantong Bersama</span>
+                <strong>@Model.SharedBalance.ToRupiah()</strong>
+            </div>
+            <div>
+                <span>Arus Kas (@Model.Month.ToIdMonth())</span>
+                <strong class="@(Model.NetCashflow >= 0 ? "text-positive-light" : "text-amber-light")">
+                    @(Model.NetCashflow >= 0 ? "+" : "-") @Math.Abs(Model.NetCashflow).ToRupiah()
+                </strong>
+            </div>
+        </div>
+    </div>
+    <div class="hero__stats">
+        <div class="hero-stat">
+            <span class="hero-stat__icon hero-stat__icon--in">@Icons.Get("arrow-down-left", 16)</span>
+            <div>
+                <span>Pemasukan @Model.Month.ToIdMonth()</span>
+                <strong class="text-positive-light">+ @Model.MonthIncome.ToRupiah()</strong>
+            </div>
+        </div>
+        <div class="hero-stat">
+            <span class="hero-stat__icon hero-stat__icon--out">@Icons.Get("arrow-up-right", 16)</span>
+            <div>
+                <span>Pengeluaran @Model.Month.ToIdMonth()</span>
+                <strong>- @Model.MonthExpense.ToRupiah()</strong>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="section__head">
+        <h2>Kantong Anda</h2>
+        <span class="muted small">@Model.Pockets.Count kantong</span>
+    </div>
+
+    @if (Model.Pockets.Count == 0)
+    {
+        <div class="card empty-state">
+            <span class="empty-state__icon">@Icons.Get("wallet", 28)</span>
+            <h3>Belum ada kantong</h3>
+            <p>Buat kantong pertama Anda, misalnya "Pengeluaran Bulanan" atau "Dana Darurat".</p>
+            <a class="btn btn--primary" asp-controller="Pockets" asp-action="Create">Buat Kantong</a>
+        </div>
+    }
+    else
+    {
+        <div class="pocket-grid">
+            @foreach (var p in Model.Pockets)
+            {
+                <article class="pocket-card pk-@p.Color">
+                    <div class="pocket-card__top">
+                        <span class="pocket-card__icon">@Icons.Get("wallet", 20)</span>
+                        <div class="pocket-card__badges">
+                            @if (p.IsShared)
+                            {
+                                <span class="badge badge--amber">Shared • @p.MemberCount Anggota</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge--slate">Personal</span>
+                            }
+                            @if (p.Role != PocketRole.Owner)
+                            {
+                                <span class="badge badge--outline">@p.Role.Label()</span>
+                            }
+                        </div>
+                    </div>
+
+                    <h3 class="pocket-card__name">
+                        <a asp-controller="Pockets" asp-action="Details" asp-route-id="@p.Id">@p.Name</a>
+                    </h3>
+                    <p class="pocket-card__desc">@(string.IsNullOrWhiteSpace(p.Description) ? "Tanpa deskripsi" : p.Description)</p>
+
+                    <div class="pocket-card__balance">
+                        <span>Sisa saldo</span>
+                        <strong>@p.Balance.ToRupiah()</strong>
+                    </div>
+
+                    @if (p.HasTarget)
+                    {
+                        <div class="goal">
+                            <div class="goal__meta">
+                                <span>Target @p.TargetAmount.ToRupiah()</span>
+                                <strong>@p.TargetPercent%</strong>
+                            </div>
+                            <div class="progress" aria-label="Progres target @p.TargetPercent%">
+                                <div class="progress__bar @(p.TargetPercent >= 100 ? "is-done" : "")" style="width:@p.TargetPercent%"></div>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="pocket-card__actions">
+                        @if (p.CanIncome)
+                        {
+                            <a class="btn btn--soft btn--sm" asp-controller="Pockets" asp-action="Details" asp-route-id="@p.Id" asp-route-open="income">+ Pemasukan</a>
+                        }
+                        @if (p.CanSpend)
+                        {
+                            <a class="btn btn--soft btn--sm" asp-controller="Pockets" asp-action="Details" asp-route-id="@p.Id" asp-route-open="expense">+ Pengeluaran</a>
+                        }
+                        @if (p.CanIncome)
+                        {
+                            <a class="btn btn--soft btn--sm" asp-controller="Pockets" asp-action="Details" asp-route-id="@p.Id" asp-route-open="transfer">Transfer</a>
+                        }
+                        <a class="btn btn--ghost btn--sm" asp-controller="Pockets" asp-action="Details" asp-route-id="@p.Id">Detail</a>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</section>
+
+<section class="section" id="analitik">
+    <div class="section__head section__head--wrap">
+        <div>
+            <h2>Analitik Pengeluaran</h2>
+            <span class="muted small">Periode @Model.Month.ToIdMonth()</span>
+        </div>
+
+        <form asp-action="Index" method="get" class="month-nav" aria-label="Pilih bulan analitik">
+            <a class="icon-btn" asp-action="Index" asp-route-month="@Model.PrevMonthKey" asp-fragment="analitik" title="Bulan sebelumnya" aria-label="Bulan sebelumnya">@Icons.Get("chevron-left", 16)</a>
+            <input type="month" name="month" class="input input--sm month-nav__input" value="@Model.SelectedMonthKey" max="@maxMonth" data-autosubmit aria-label="Pilih bulan" />
+            @if (Model.CanGoNextMonth)
+            {
+                <a class="icon-btn" asp-action="Index" asp-route-month="@Model.NextMonthKey" asp-fragment="analitik" title="Bulan berikutnya" aria-label="Bulan berikutnya">@Icons.Get("chevron-right", 16)</a>
+            }
+            else
+            {
+                <span class="icon-btn is-disabled" aria-hidden="true">@Icons.Get("chevron-right", 16)</span>
+            }
+        </form>
+    </div>
+
+    <div class="chart-grid">
+        <div class="card chart-card">
+            <h3 class="card__title">Primer vs Sekunder vs Lainnya</h3>
+            <p class="muted small">Proporsi pengeluaran @Model.Month.ToIdMonth() berdasarkan sifat kebutuhan.</p>
+            @if (hasExpense)
+            {
+                <div class="chart-box chart-box--doughnut"><canvas id="groupChart" aria-label="Doughnut chart pengeluaran per kelompok" role="img"></canvas></div>
+                <ul class="legend">
+                    @for (var i = 0; i < Model.GroupBreakdown.Count; i++)
+                    {
+                        var g = Model.GroupBreakdown[i];
+                        var pct = totalGroupExpense > 0 ? Math.Round(g.Amount / totalGroupExpense * 100m, 0) : 0;
+                        <li>
+                            <span class="legend__dot" style="background:@ChartPalette.ForGroup(g.Label, i)"></span>
+                            <span class="legend__label">@g.Label <span class="muted small">(@pct%)</span></span>
+                            <strong>@g.Amount.ToRupiah()</strong>
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <div class="chart-empty">@Icons.Get("pie", 28)<span>Belum ada pengeluaran pada @Model.Month.ToIdMonth().</span></div>
+            }
+        </div>
+
+        <div class="card chart-card">
+            <h3 class="card__title">Rincian per Alokasi</h3>
+            <p class="muted small">Pengeluaran @Model.Month.ToIdMonth() untuk setiap alokasi (Makan, Transport, dll).</p>
+            @if (hasExpense)
+            {
+                <div class="chart-box chart-box--bar"><canvas id="categoryChart" aria-label="Bar chart pengeluaran per alokasi" role="img"></canvas></div>
+            }
+            else
+            {
+                <div class="chart-empty">@Icons.Get("pie", 28)<span>Belum ada pengeluaran pada @Model.Month.ToIdMonth().</span></div>
+            }
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="section__head">
+        <h2>Aktivitas Terbaru</h2>
+    </div>
+
+    @if (Model.Recent.Count == 0)
+    {
+        <div class="card empty-state empty-state--compact">
+            <span class="empty-state__icon">@Icons.Get("inbox", 26)</span>
+            <p>Belum ada transaksi. Catat pemasukan pertama Anda dari kartu kantong di atas.</p>
+        </div>
+    }
+    else
+    {
+        <div class="card card--flush">
+            <ul class="activity">
+                @foreach (var t in Model.Recent)
+                {
+                    <li class="activity__item">
+                        <span class="tx-icon @(t.IsCredit ? "tx-icon--in" : "tx-icon--out")">
+                            @if (t.Type == TransactionType.TransferIn || t.Type == TransactionType.TransferOut)
+                            {
+                                @Icons.Get("swap", 16)
+                            }
+                            else if (t.IsCredit)
+                            {
+                                @Icons.Get("arrow-down-left", 16)
+                            }
+                            else
+                            {
+                                @Icons.Get("arrow-up-right", 16)
+                            }
+                        </span>
+                        <div class="activity__body">
+                            <strong>@t.Title</strong>
+                            <span class="muted small">
+                                <a asp-controller="Pockets" asp-action="Details" asp-route-id="@t.PocketId">@t.PocketName</a>
+                                · @t.Date.ToIdDate()
+                                @if (t.CategoryLabel is not null)
+                                {
+                                    <text> · @t.CategoryLabel</text>
+                                }
+                                · oleh @t.ActorLabel
+                            </span>
+                        </div>
+                        <strong class="amount @(t.IsCredit ? "amount--in" : "amount--out")">@(t.IsCredit ? "+" : "-") @t.Amount.ToRupiah()</strong>
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+</section>
+
+@section Scripts {
+    @if (hasExpense)
+    {
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+        <script id="chart-data" type="application/json">@Html.Raw(JsonSerializer.Serialize(chartData))</script>
+        <script>
+            (function () {
+                if (typeof Chart === 'undefined') { return; }
+                var data = JSON.parse(document.getElementById('chart-data').textContent);
+                var rupiah = function (n) { return 'Rp ' + Math.round(n).toLocaleString('id-ID'); };
+
+                Chart.defaults.font.family = "'Plus Jakarta Sans', system-ui, sans-serif";
+                Chart.defaults.color = '#64748B';
+
+                var groupCanvas = document.getElementById('groupChart');
+                if (groupCanvas) {
+                    var total = data.groups.values.reduce(function (a, b) { return a + b; }, 0);
+                    new Chart(groupCanvas, {
+                        type: 'doughnut',
+                        data: {
+                            labels: data.groups.labels,
+                            datasets: [{
+                                data: data.groups.values,
+                                backgroundColor: data.groups.colors,
+                                borderColor: '#FFFFFF',
+                                borderWidth: 3,
+                                hoverOffset: 6
+                            }]
+                        },
+                        options: {
+                            maintainAspectRatio: false,
+                            cutout: '68%',
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (ctx) {
+                                            var pct = total > 0 ? Math.round(ctx.parsed / total * 100) : 0;
+                                            return ' ' + ctx.label + ': ' + rupiah(ctx.parsed) + ' (' + pct + '%)';
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                var catCanvas = document.getElementById('categoryChart');
+                if (catCanvas) {
+                    new Chart(catCanvas, {
+                        type: 'bar',
+                        data: {
+                            labels: data.categories.labels,
+                            datasets: [{
+                                label: 'Pengeluaran',
+                                data: data.categories.values,
+                                backgroundColor: data.categories.colors,
+                                borderRadius: 8,
+                                maxBarThickness: 44
+                            }]
+                        },
+                        options: {
+                            maintainAspectRatio: false,
+                            scales: {
+                                x: { grid: { display: false } },
+                                y: {
+                                    beginAtZero: true,
+                                    grid: { color: '#E2E8F0' },
+                                    border: { display: false },
+                                    ticks: {
+                                        callback: function (v) {
+                                            if (v >= 1000000) { return (v / 1000000).toLocaleString('id-ID') + ' jt'; }
+                                            if (v >= 1000) { return (v / 1000).toLocaleString('id-ID') + ' rb'; }
+                                            return v;
+                                        }
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        title: function (items) {
+                                            var i = items[0].dataIndex;
+                                            return '[' + data.categories.groups[i] + '] ' + data.categories.labels[i];
+                                        },
+                                        label: function (ctx) { return ' ' + rupiah(ctx.parsed.y); }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            })();
+        </script>
+    }
+}

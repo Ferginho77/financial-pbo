@@ -1,0 +1,40 @@
+@model RegisterViewModel
+@{
+    ViewData["Title"] = "Daftar";
+    Layout = "_AuthLayout";
+}
+
+<h1 class="auth__title">Buat akun Kantongku</h1>
+<p class="auth__subtitle">Kategori pengeluaran dan satu kantong awal akan disiapkan otomatis.</p>
+
+<form asp-action="Register" method="post" class="form" novalidate>
+    <div asp-validation-summary="ModelOnly" class="alert alert--error"></div>
+
+    <div class="field">
+        <label asp-for="DisplayName" class="field__label"></label>
+        <input asp-for="DisplayName" class="input" autocomplete="name" placeholder="Contoh: Andi Pratama" autofocus />
+        <span asp-validation-for="DisplayName" class="field__error"></span>
+    </div>
+
+    <div class="field">
+        <label asp-for="Email" class="field__label"></label>
+        <input asp-for="Email" class="input" type="email" autocomplete="email" placeholder="nama@email.com" />
+        <span asp-validation-for="Email" class="field__error"></span>
+    </div>
+
+    <div class="field">
+        <label asp-for="Password" class="field__label"></label>
+        <input asp-for="Password" class="input" autocomplete="new-password" placeholder="Minimal 6 karakter" />
+        <span asp-validation-for="Password" class="field__error"></span>
+    </div>
+
+    <div class="field">
+        <label asp-for="ConfirmPassword" class="field__label"></label>
+        <input asp-for="ConfirmPassword" class="input" autocomplete="new-password" placeholder="Ulangi kata sandi" />
+        <span asp-validation-for="ConfirmPassword" class="field__error"></span>
+    </div>
+
+    <button type="submit" class="btn btn--primary btn--block btn--lg">Daftar &amp; Mulai</button>
+</form>
+
+<p class="auth__switch">Sudah punya akun? <a asp-action="Login">Masuk</a></p>

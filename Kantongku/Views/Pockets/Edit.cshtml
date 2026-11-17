@@ -1,0 +1,23 @@
+@model PocketFormViewModel
+@{
+    ViewData["Title"] = "Edit Kantong";
+}
+
+<a class="back-link" asp-controller="Pockets" asp-action="Details" asp-route-id="@Model.Id">@Icons.Get("arrow-left", 16) Kembali ke kantong</a>
+
+<div class="narrow">
+    <div class="page-head page-head--stack">
+        <div>
+            <h1>Edit kantong</h1>
+            <p class="muted">Ubah nama, deskripsi, atau warna kantong. Saldo dan riwayat tidak terpengaruh.</p>
+        </div>
+    </div>
+
+    <form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="card form" novalidate>
+        <partial name="_PocketForm" model="Model" />
+        <div class="form__actions">
+            <a class="btn btn--ghost" asp-action="Details" asp-route-id="@Model.Id">Batal</a>
+            <button type="submit" class="btn btn--primary">Simpan Perubahan</button>
+        </div>
+    </form>
+</div>

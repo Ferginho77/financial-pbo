@@ -1,0 +1,636 @@
+@model PocketDetailsViewModel
+@{
+    ViewData["Title"] = Model.Name;
+    var balanceAttr = Math.Round(Model.Balance, 0).ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+    var filters = new (string Key, string Label)[]
+    {
+        ("all", "Semua"), ("income", "Pemasukan"), ("expense", "Pengeluaran"), ("transfer", "Transfer")
+    };
+    var hasActiveQuery = Model.Filter != "all" || !string.IsNullOrWhiteSpace(Model.SearchQuery) || !string.IsNullOrWhiteSpace(Model.SelectedMonth);
+}
+
+<a class="back-link" asp-controller="Home" asp-action="Index">@Icons.Get("arrow-left", 16) Dashboard</a>
+
+<section class="pocket-hero pk-@Model.Color">
+    <div class="pocket-hero__info">
+        <div class="pocket-card__badges">
+            @if (Model.IsShared)
+            {
+                <span class="badge badge--amber">Shared • @Model.Members.Count Anggota</span>
+            }
+            else
+            {
+                <span class="badge badge--slate">Personal</span>
+            }
+            <span class="badge badge--outline">Peran Anda: @Model.Role.Label()</span>
+        </div>
+        <h1>@Model.Name</h1>
+        <p class="pocket-hero__desc">@(string.IsNullOrWhiteSpace(Model.Description) ? "Tanpa deskripsi" : Model.Description)</p>
+        <p class="pocket-hero__meta">Pemilik: @Model.OwnerLabel · Dibuat @Model.CreatedAt.ToIdDate()</p>
+    </div>
+
+    <div class="pocket-hero__balance">
+        <span>Saldo saat ini</span>
+        <strong>@Model.Balance.ToRupiah()</strong>
+        @if (Model.HasTarget)
+        {
+            <div class="goal goal--hero">
+                <div class="goal__meta">
+                    <span>Target @Model.TargetAmount.ToRupiah()</span>
+                    <strong>@Model.TargetPercent%</strong>
+                </div>
+                <div class="progress progress--hero">
+                    <div class="progress__bar @(Model.TargetPercent >= 100 ? "is-done" : "")" style="width:@Model.TargetPercent%"></div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="pocket-hero__actions">
+        @if (Model.CanManage)
+        {
+            <button type="button" class="btn btn--amber" data-open-dialog="dlgIncome">@Icons.Get("plus", 16) Pemasukan</button>
+        }
+        @if (Model.CanSpend)
+        {
+            <button type="button" class="btn btn--light" data-open-dialog="dlgExpense">@Icons.Get("minus", 16) Pengeluaran</button>
+        }
+        @if (Model.CanManage)
+        {
+            <button type="button" class="btn btn--light" data-open-dialog="dlgTransfer">@Icons.Get("swap", 16) Transfer</button>
+            <a class="btn btn--outline-light" asp-action="Edit" asp-route-id="@Model.Id">@Icons.Get("edit", 16) Edit</a>
+        }
+    </div>
+</section>
+
+@if (!Model.CanSpend)
+{
+    <div class="alert alert--info">
+        <strong>Mode lihat saja.</strong> Anda adalah Viewer di kantong ini: dapat melihat saldo dan mutasi, tetapi tidak dapat mencatat pengeluaran atau transfer.
+    </div>
+}
+
+<div class="stat-row">
+    <div class="card stat">
+        <span class="stat__label">Pemasukan bulan ini</span>
+        <strong class="stat__value text-positive">+ @Model.MonthIncome.ToRupiah()</strong>
+    </div>
+    <div class="card stat">
+        <span class="stat__label">Pengeluaran bulan ini</span>
+        <strong class="stat__value">- @Model.MonthExpense.ToRupiah()</strong>
+    </div>
+    <div class="card stat">
+        <span class="stat__label">Transaksi ditemukan</span>
+        <strong class="stat__value">@Model.TotalCount.ToString("N0", Formatting.Culture)</strong>
+    </div>
+</div>
+
+<div class="split">
+    <section class="card card--flush split__main" id="mutasi">
+        <div class="card__head">
+            <h2 class="card__title">Mutasi Transaksi</h2>
+            <div class="mutasi-head-tools">
+                <nav class="tabs" aria-label="Filter mutasi">
+                    @foreach (var f in filters)
+                    {
+                        <a class="tabs__item @(Model.Filter == f.Key ? "is-active" : "")"
+                           asp-action="Details" asp-route-id="@Model.Id"
+                           asp-route-filter="@f.Key" asp-route-q="@Model.SearchQuery" asp-route-month="@Model.SelectedMonth"
+                           asp-fragment="mutasi">@f.Label</a>
+                    }
+                </nav>
+                <a class="btn btn--soft btn--sm"
+                   asp-action="ExportCsv" asp-route-id="@Model.Id"
+                   asp-route-filter="@Model.Filter" asp-route-q="@Model.SearchQuery" asp-route-month="@Model.SelectedMonth"
+                   title="Unduh mutasi sebagai CSV">@Icons.Get("download", 14) CSV</a>
+            </div>
+        </div>
+
+        <form asp-action="Details" asp-route-id="@Model.Id" method="get" class="mutasi-toolbar">
+            <input type="hidden" name="filter" value="@Model.Filter" />
+            <div class="search-box">
+                @Icons.Get("search", 16)
+                <input type="search" name="q" class="input input--sm" value="@Model.SearchQuery" placeholder="Cari transaksi, catatan, kategori, atau anggota…" aria-label="Cari mutasi" />
+            </div>
+            <input type="month" name="month" class="input input--sm month-filter" value="@Model.SelectedMonth" max="@DateTime.Today.ToString("yyyy-MM")" aria-label="Filter bulan" />
+            <button type="submit" class="btn btn--primary btn--sm">Terapkan</button>
+            @if (hasActiveQuery)
+            {
+                <a class="btn btn--ghost btn--sm" asp-action="Details" asp-route-id="@Model.Id" asp-fragment="mutasi">Reset</a>
+            }
+        </form>
+
+        @if (Model.Transactions.Count == 0)
+        {
+            <div class="empty-state empty-state--compact">
+                <span class="empty-state__icon">@Icons.Get("inbox", 26)</span>
+                <p>@(hasActiveQuery ? "Tidak ada transaksi yang cocok dengan pencarian/filter." : "Belum ada transaksi pada kantong ini.")</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Tanggal</th>
+                            <th>Keterangan</th>
+                            @if (Model.IsShared)
+                            {
+                                <th>Dicatat oleh</th>
+                            }
+                            <th class="num">Nominal</th>
+                            @if (Model.CanSpend)
+                            {
+                                <th class="num">Aksi</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in Model.Transactions)
+                        {
+                            var isTransfer = t.Type is TransactionType.TransferIn or TransactionType.TransferOut;
+                            var amountRaw = Math.Round(t.Amount, 0, MidpointRounding.AwayFromZero).ToString("0", System.Globalization.CultureInfo.InvariantCulture);
+                            <tr>
+                                <td class="nowrap muted">@t.Date.ToIdDate()</td>
+                                <td>
+                                    <div class="tx">
+                                        <span class="tx-icon @(t.IsCredit ? "tx-icon--in" : "tx-icon--out")">
+                                            @if (isTransfer)
+                                            {
+                                                @Icons.Get("swap", 16)
+                                            }
+                                            else if (t.IsCredit)
+                                            {
+                                                @Icons.Get("arrow-down-left", 16)
+                                            }
+                                            else
+                                            {
+                                                @Icons.Get("arrow-up-right", 16)
+                                            }
+                                        </span>
+                                        <div>
+                                            <strong>@t.Title</strong>
+                                            <div class="tx__meta">
+                                                <span class="chip">@t.Type.Label()</span>
+                                                @if (t.CategoryLabel is not null)
+                                                {
+                                                    <span class="chip chip--navy">@t.CategoryLabel</span>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(t.Note))
+                                                {
+                                                    <span class="muted small">@t.Note</span>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                @if (Model.IsShared)
+                                {
+                                    <td>
+                                        <div class="actor">
+                                            <span class="avatar avatar--sm">@Formatting.Initials(t.ActorLabel)</span>
+                                            <div>
+                                                <strong class="small">@t.ActorLabel</strong>
+                                                @if (!string.IsNullOrEmpty(t.ActorEmail) && t.ActorEmail != t.ActorLabel)
+                                                {
+                                                    <div class="muted small">@t.ActorEmail</div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </td>
+                                }
+                                <td class="num nowrap">
+                                    <strong class="amount @(t.IsCredit ? "amount--in" : "amount--out")">@(t.IsCredit ? "+" : "-") @t.Amount.ToRupiah()</strong>
+                                </td>
+                                @if (Model.CanSpend)
+                                {
+                                    <td class="num nowrap">
+                                        <div class="tx-actions">
+                                            @if (t.CanEdit)
+                                            {
+                                                <button type="button"
+                                                        class="icon-btn"
+                                                        title="Edit transaksi"
+                                                        aria-label="Edit @t.Title"
+                                                        data-open-dialog="dlgEditTx"
+                                                        data-tx-id="@t.Id"
+                                                        data-tx-type="@((int)t.Type)"
+                                                        data-tx-title="@t.Title"
+                                                        data-tx-amount="@amountRaw"
+                                                        data-tx-date="@t.Date.ToString("yyyy-MM-dd")"
+                                                        data-tx-note="@(t.Note ?? string.Empty)"
+                                                        data-tx-category-id="@(t.CategoryId?.ToString() ?? string.Empty)"
+                                                        data-tx-category-label="@(t.CategoryLabel ?? string.Empty)">@Icons.Get("edit", 15)</button>
+                                            }
+                                            @if (t.CanDelete)
+                                            {
+                                                var confirmMsg = isTransfer
+                                                    ? $"Batalkan transfer \"{t.Title}\" sebesar {t.Amount.ToRupiah()}? Dana akan dikembalikan ke kantong asal."
+                                                    : $"Hapus transaksi \"{t.Title}\" ({t.Amount.ToRupiah()})? Saldo kantong akan disesuaikan otomatis.";
+                                                <form asp-action="DeleteTransaction" asp-route-id="@Model.Id" method="post" data-confirm="@confirmMsg">
+                                                    <input type="hidden" name="transactionId" value="@t.Id" />
+                                                    <input type="hidden" name="filter" value="@Model.Filter" />
+                                                    <input type="hidden" name="q" value="@Model.SearchQuery" />
+                                                    <input type="hidden" name="month" value="@Model.SelectedMonth" />
+                                                    <input type="hidden" name="page" value="@Model.Page" />
+                                                    <button type="submit" class="icon-btn icon-btn--danger" title="Hapus transaksi" aria-label="Hapus @t.Title">@Icons.Get("trash", 15)</button>
+                                                </form>
+                                            }
+                                        </div>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <div class="pager">
+                    @if (Model.Page > 1)
+                    {
+                        <a class="btn btn--ghost btn--sm" asp-action="Details" asp-route-id="@Model.Id" asp-route-filter="@Model.Filter" asp-route-q="@Model.SearchQuery" asp-route-month="@Model.SelectedMonth" asp-route-page="@(Model.Page - 1)" asp-fragment="mutasi">@Icons.Get("chevron-left", 16) Sebelumnya</a>
+                    }
+                    else
+                    {
+                        <span></span>
+                    }
+                    <span class="muted small">Halaman @Model.Page dari @Model.TotalPages</span>
+                    @if (Model.Page < Model.TotalPages)
+                    {
+                        <a class="btn btn--ghost btn--sm" asp-action="Details" asp-route-id="@Model.Id" asp-route-filter="@Model.Filter" asp-route-q="@Model.SearchQuery" asp-route-month="@Model.SelectedMonth" asp-route-page="@(Model.Page + 1)" asp-fragment="mutasi">Berikutnya @Icons.Get("chevron-right", 16)</a>
+                    }
+                    else
+                    {
+                        <span></span>
+                    }
+                </div>
+            }
+        }
+    </section>
+
+    <aside class="split__side">
+        <section class="card" id="anggota">
+            <div class="card__head card__head--tight">
+                <h2 class="card__title">@Icons.Get("users", 18) Anggota</h2>
+                <span class="muted small">@Model.Members.Count orang</span>
+            </div>
+
+            <ul class="members">
+                @foreach (var m in Model.Members)
+                {
+                    <li class="member">
+                        <span class="avatar">@Formatting.Initials(m.Label)</span>
+                        <div class="member__info">
+                            <strong>@m.Label @if (m.IsCurrentUser)
+                                {
+                                    <span class="muted">(Anda)</span>
+                                }</strong>
+                            <span class="muted small">@m.Email</span>
+                        </div>
+
+                        @if (Model.CanManage && m.Role != PocketRole.Owner)
+                        {
+                            <div class="member__controls">
+                                <form asp-action="ChangeRole" asp-route-id="@Model.Id" method="post">
+                                    <input type="hidden" name="memberId" value="@m.Id" />
+                                    <select name="role" class="input input--sm" data-autosubmit aria-label="Hak akses @m.Label">
+                                        <option value="Spender" selected="@(m.Role == PocketRole.Spender)">Spender</option>
+                                        <option value="Viewer" selected="@(m.Role == PocketRole.Viewer)">Viewer</option>
+                                    </select>
+                                </form>
+                                <form asp-action="RemoveMember" asp-route-id="@Model.Id" method="post" data-confirm="Hapus @m.Label dari kantong ini?">
+                                    <input type="hidden" name="memberId" value="@m.Id" />
+                                    <button type="submit" class="icon-btn icon-btn--danger" title="Hapus anggota" aria-label="Hapus @m.Label">@Icons.Get("trash", 16)</button>
+                                </form>
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="badge @(m.Role == PocketRole.Owner ? "badge--navy" : m.Role == PocketRole.Spender ? "badge--amber" : "badge--slate")">@m.Role.Label()</span>
+                        }
+                    </li>
+                }
+            </ul>
+
+            @if (Model.CanManage)
+            {
+                <form asp-action="Invite" asp-route-id="@Model.Id" method="post" class="invite" novalidate>
+                    <h3 class="invite__title">Undang anggota</h3>
+                    <p class="muted small">Masukkan email pengguna Kantongku yang sudah terdaftar.</p>
+
+                    <div class="field">
+                        <input asp-for="Invite.Email" class="input" type="email" placeholder="email@teman.com" aria-label="Email anggota" />
+                        <span asp-validation-for="Invite.Email" class="field__error"></span>
+                    </div>
+                    <div class="field">
+                        <select asp-for="Invite.Role" class="input" aria-label="Hak akses">
+                            <option value="Spender">Spender · boleh mencatat pengeluaran</option>
+                            <option value="Viewer">Viewer · hanya melihat</option>
+                        </select>
+                        <span asp-validation-for="Invite.Role" class="field__error"></span>
+                    </div>
+                    @if (Model.OpenDialog == "invite")
+                    {
+                        <div asp-validation-summary="ModelOnly" class="alert alert--error"></div>
+                    }
+                    <button type="submit" class="btn btn--primary btn--block">@Icons.Get("mail", 16) Tambahkan</button>
+                </form>
+            }
+            else if (Model.Role != PocketRole.Owner)
+            {
+                <form asp-action="Leave" asp-route-id="@Model.Id" method="post" class="invite" data-confirm="Keluar dari kantong ini? Anda tidak akan bisa melihat saldo dan mutasinya lagi.">
+                    <button type="submit" class="btn btn--danger-soft btn--block">Keluar dari kantong</button>
+                </form>
+            }
+        </section>
+
+        <section class="card">
+            <h2 class="card__title">@Icons.Get("shield", 18) Hak akses</h2>
+            <ul class="roles">
+                <li><span class="badge badge--navy">Owner</span><span class="muted small">Kontrol penuh: edit, anggota, pemasukan, transfer, koreksi transaksi, hapus kantong.</span></li>
+                <li><span class="badge badge--amber">Spender</span><span class="muted small">Melihat saldo &amp; mutasi, mencatat serta mengedit/hapus pengeluaran sendiri.</span></li>
+                <li><span class="badge badge--slate">Viewer</span><span class="muted small">Hanya melihat saldo &amp; mutasi.</span></li>
+            </ul>
+        </section>
+
+        @if (Model.CanManage)
+        {
+            <section class="card card--danger">
+                <h2 class="card__title">Zona berbahaya</h2>
+                <p class="muted small">Menghapus kantong akan menghapus seluruh riwayat transaksinya untuk semua anggota. Tindakan ini tidak dapat dibatalkan.</p>
+                <form asp-action="Delete" asp-route-id="@Model.Id" method="post" data-confirm="Hapus kantong &quot;@Model.Name&quot; beserta seluruh riwayatnya? Tindakan ini tidak dapat dibatalkan.">
+                    <button type="submit" class="btn btn--danger-soft btn--block">@Icons.Get("trash", 16) Hapus kantong</button>
+                </form>
+            </section>
+        }
+    </aside>
+</div>
+
+@* ===================== DIALOG: PEMASUKAN ===================== *@
+@if (Model.CanManage)
+{
+    <dialog class="dialog" id="dlgIncome" data-auto-open="@(Model.OpenDialog == "income" ? "true" : "false")">
+        <form asp-action="AddIncome" asp-route-id="@Model.Id" method="post" class="form" novalidate>
+            <header class="dialog__head">
+                <div>
+                    <h2>Catat pemasukan</h2>
+                    <p class="muted small">Ke kantong <strong>@Model.Name</strong></p>
+                </div>
+                <button type="button" class="icon-btn" data-close-dialog aria-label="Tutup">@Icons.Get("x", 18)</button>
+            </header>
+
+            <div class="dialog__body">
+                @if (Model.OpenDialog == "income")
+                {
+                    <div asp-validation-summary="ModelOnly" class="alert alert--error"></div>
+                }
+
+                <div class="field">
+                    <label for="income-amount" class="field__label">Nominal</label>
+                    <div class="money">
+                        <span class="money__prefix">Rp</span>
+                        <input id="income-amount" name="Income.Amount" class="input money__input" type="text" inputmode="numeric" autocomplete="off" placeholder="0" data-rupiah value="@Model.Income.Amount.ToInputValue()" />
+                    </div>
+                    <span asp-validation-for="Income.Amount" class="field__error"></span>
+                </div>
+
+                <div class="field">
+                    <label asp-for="Income.Source" class="field__label"></label>
+                    <input asp-for="Income.Source" class="input" maxlength="100" placeholder="Contoh: Gaji, Uang Saku, Freelance" />
+                    <span asp-validation-for="Income.Source" class="field__error"></span>
+                </div>
+
+                <div class="field">
+                    <label asp-for="Income.Date" class="field__label"></label>
+                    <input asp-for="Income.Date" class="input" type="date" asp-format="{0:yyyy-MM-dd}" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                    <span asp-validation-for="Income.Date" class="field__error"></span>
+                </div>
+
+                <div class="field">
+                    <label asp-for="Income.Note" class="field__label">Catatan <span class="muted">(opsional)</span></label>
+                    <textarea asp-for="Income.Note" class="input" rows="2" maxlength="255"></textarea>
+                    <span asp-validation-for="Income.Note" class="field__error"></span>
+                </div>
+            </div>
+
+            <footer class="dialog__foot">
+                <button type="button" class="btn btn--ghost" data-close-dialog>Batal</button>
+                <button type="submit" class="btn btn--primary">Simpan Pemasukan</button>
+            </footer>
+        </form>
+    </dialog>
+}
+
+@* ===================== DIALOG: PENGELUARAN ===================== *@
+@if (Model.CanSpend)
+{
+    <dialog class="dialog" id="dlgExpense" data-auto-open="@(Model.OpenDialog == "expense" ? "true" : "false")">
+        <form asp-action="AddExpense" asp-route-id="@Model.Id" method="post" class="form" novalidate>
+            <header class="dialog__head">
+                <div>
+                    <h2>Catat pengeluaran</h2>
+                    <p class="muted small">Dari kantong <strong>@Model.Name</strong></p>
+                </div>
+                <button type="button" class="icon-btn" data-close-dialog aria-label="Tutup">@Icons.Get("x", 18)</button>
+            </header>
+
+            <div class="dialog__body">
+                @if (Model.OpenDialog == "expense")
+                {
+                    <div asp-validation-summary="ModelOnly" class="alert alert--error"></div>
+                }
+
+                <div class="balance-note">
+                    <span>Sisa saldo kantong</span>
+                    <strong>@Model.Balance.ToRupiah()</strong>
+                </div>
+
+                <div class="field">
+                    <label for="expense-amount" class="field__label">Nominal pengeluaran</label>
+                    <div class="money">
+                        <span class="money__prefix">Rp</span>
+                        <input id="expense-amount" name="Expense.Amount" class="input money__input" type="text" inputmode="numeric" autocomplete="off" placeholder="0" data-rupiah data-balance="@balanceAttr" value="@Model.Expense.Amount.ToInputValue()" />
+                    </div>
+                    <span class="field__hint" data-balance-hint></span>
+                    <span asp-validation-for="Expense.Amount" class="field__error"></span>
+                </div>
+
+                <div class="field">
+                    <label asp-for="Expense.Title" class="field__label"></label>
+                    <input asp-for="Expense.Title" class="input" maxlength="100" placeholder="Contoh: Makan Siang, Bensin Pertamax" />
+                    <span asp-validation-for="Expense.Title" class="field__error"></span>
+                </div>
+
+                <div class="field">
+                    <label asp-for="Expense.CategoryId" class="field__label"></label>
+                    <select asp-for="Expense.CategoryId" asp-items="Model.CategoryOptions" class="input">
+                        <option value="">Pilih sifat &amp; alokasi…</option>
+                    </select>
+                    <span asp-validation-for="Expense.CategoryId" class="field__error"></span>
+                    @if (Model.CategoryOptions.Count == 0)
+                    {
+                        <span class="field__hint">Belum ada alokasi. <a asp-controller="Categories" asp-action="Index">Buat alokasi dulu</a>.</span>
+                    }
+                </div>
+
+                <div class="field">
+                    <label asp-for="Expense.Date" class="field__label"></label>
+                    <input asp-for="Expense.Date" class="input" type="date" asp-format="{0:yyyy-MM-dd}" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                    <span asp-validation-for="Expense.Date" class="field__error"></span>
+                </div>
+
+                <div class="field">
+                    <label asp-for="Expense.Note" class="field__label">Catatan <span class="muted">(opsional)</span></label>
+                    <textarea asp-for="Expense.Note" class="input" rows="2" maxlength="255"></textarea>
+                    <span asp-validation-for="Expense.Note" class="field__error"></span>
+                </div>
+            </div>
+
+            <footer class="dialog__foot">
+                <button type="button" class="btn btn--ghost" data-close-dialog>Batal</button>
+                <button type="submit" class="btn btn--primary">Simpan Pengeluaran</button>
+            </footer>
+        </form>
+    </dialog>
+
+    @* ===================== DIALOG: EDIT TRANSAKSI ===================== *@
+    <dialog class="dialog" id="dlgEditTx" data-auto-open="@(Model.OpenDialog == "editTx" ? "true" : "false")">
+        <form asp-action="EditTransaction" asp-route-id="@Model.Id" method="post" class="form" novalidate>
+            <header class="dialog__head">
+                <div>
+                    <h2>Edit transaksi</h2>
+                    <p class="muted small">Saldo kantong akan disesuaikan otomatis</p>
+                </div>
+                <button type="button" class="icon-btn" data-close-dialog aria-label="Tutup">@Icons.Get("x", 18)</button>
+            </header>
+
+            <div class="dialog__body">
+                @if (Model.OpenDialog == "editTx")
+                {
+                    <div asp-validation-summary="ModelOnly" class="alert alert--error"></div>
+                }
+
+                <input asp-for="EditTransaction.TransactionId" type="hidden" />
+                <input asp-for="EditTransaction.Type" type="hidden" />
+                <input type="hidden" name="filter" value="@Model.Filter" />
+                <input type="hidden" name="q" value="@Model.SearchQuery" />
+                <input type="hidden" name="month" value="@Model.SelectedMonth" />
+                <input type="hidden" name="page" value="@Model.Page" />
+
+                <div class="field">
+                    <label for="edit-tx-amount" class="field__label">Nominal</label>
+                    <div class="money">
+                        <span class="money__prefix">Rp</span>
+                        <input id="edit-tx-amount" name="EditTransaction.Amount" class="input money__input" type="text" inputmode="numeric" autocomplete="off" placeholder="0" data-rupiah value="@Model.EditTransaction.Amount.ToInputValue()" />
+                    </div>
+                    <span asp-validation-for="EditTransaction.Amount" class="field__error"></span>
+                </div>
+
+                <div class="field">
+                    <label asp-for="EditTransaction.Title" class="field__label">Keterangan / Sumber</label>
+                    <input asp-for="EditTransaction.Title" class="input" maxlength="100" />
+                    <span asp-validation-for="EditTransaction.Title" class="field__error"></span>
+                </div>
+
+                <div class="field" data-edit-category-wrap style="@(Model.OpenDialog == "editTx" && Model.EditTransaction.Type != TransactionType.Expense ? "display:none" : "")">
+                    <label asp-for="EditTransaction.CategoryId" class="field__label"></label>
+                    <select asp-for="EditTransaction.CategoryId" asp-items="Model.CategoryOptions" class="input">
+                        <option value="">Pilih sifat &amp; alokasi…</option>
+                    </select>
+                    <span asp-validation-for="EditTransaction.CategoryId" class="field__error"></span>
+                </div>
+
+                <div class="field">
+                    <label asp-for="EditTransaction.Date" class="field__label"></label>
+                    <input asp-for="EditTransaction.Date" class="input" type="date" asp-format="{0:yyyy-MM-dd}" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                    <span asp-validation-for="EditTransaction.Date" class="field__error"></span>
+                </div>
+
+                <div class="field">
+                    <label asp-for="EditTransaction.Note" class="field__label">Catatan <span class="muted">(opsional)</span></label>
+                    <textarea asp-for="EditTransaction.Note" class="input" rows="2" maxlength="255"></textarea>
+                    <span asp-validation-for="EditTransaction.Note" class="field__error"></span>
+                </div>
+            </div>
+
+            <footer class="dialog__foot">
+                <button type="button" class="btn btn--ghost" data-close-dialog>Batal</button>
+                <button type="submit" class="btn btn--primary">Simpan Perubahan</button>
+            </footer>
+        </form>
+    </dialog>
+}
+
+@* ===================== DIALOG: TRANSFER ===================== *@
+@if (Model.CanManage)
+{
+    <dialog class="dialog" id="dlgTransfer" data-auto-open="@(Model.OpenDialog == "transfer" ? "true" : "false")">
+        <form asp-action="Transfer" asp-route-id="@Model.Id" method="post" class="form" novalidate>
+            <header class="dialog__head">
+                <div>
+                    <h2>Transfer antar-kantong</h2>
+                    <p class="muted small">Alokasikan dana dari <strong>@Model.Name</strong> ke kantong lain</p>
+                </div>
+                <button type="button" class="icon-btn" data-close-dialog aria-label="Tutup">@Icons.Get("x", 18)</button>
+            </header>
+
+            <div class="dialog__body">
+                @if (Model.OpenDialog == "transfer")
+                {
+                    <div asp-validation-summary="ModelOnly" class="alert alert--error"></div>
+                }
+
+                @if (Model.TransferTargets.Count == 0)
+                {
+                    <div class="alert alert--info">
+                        Anda belum memiliki kantong lain sebagai tujuan transfer.
+                        <a asp-action="Create">Buat kantong baru</a> terlebih dahulu.
+                    </div>
+                }
+
+                <div class="balance-note">
+                    <span>Saldo kantong asal</span>
+                    <strong>@Model.Balance.ToRupiah()</strong>
+                </div>
+
+                <div class="field">
+                    <label asp-for="Transfer.DestinationPocketId" class="field__label"></label>
+                    <select asp-for="Transfer.DestinationPocketId" asp-items="Model.TransferTargets" class="input">
+                        <option value="">Pilih kantong tujuan…</option>
+                    </select>
+                    <span asp-validation-for="Transfer.DestinationPocketId" class="field__error"></span>
+                </div>
+
+                <div class="field">
+                    <label for="transfer-amount" class="field__label">Nominal transfer</label>
+                    <div class="money">
+                        <span class="money__prefix">Rp</span>
+                        <input id="transfer-amount" name="Transfer.Amount" class="input money__input" type="text" inputmode="numeric" autocomplete="off" placeholder="0" data-rupiah data-balance="@balanceAttr" value="@Model.Transfer.Amount.ToInputValue()" />
+                    </div>
+                    <span class="field__hint" data-balance-hint></span>
+                    <span asp-validation-for="Transfer.Amount" class="field__error"></span>
+                </div>
+
+                <div class="field">
+                    <label asp-for="Transfer.Date" class="field__label"></label>
+                    <input asp-for="Transfer.Date" class="input" type="date" asp-format="{0:yyyy-MM-dd}" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                    <span asp-validation-for="Transfer.Date" class="field__error"></span>
+                </div>
+
+                <div class="field">
+                    <label asp-for="Transfer.Note" class="field__label">Catatan <span class="muted">(opsional)</span></label>
+                    <textarea asp-for="Transfer.Note" class="input" rows="2" maxlength="255"></textarea>
+                    <span asp-validation-for="Transfer.Note" class="field__error"></span>
+                </div>
+            </div>
+
+            <footer class="dialog__foot">
+                <button type="button" class="btn btn--ghost" data-close-dialog>Batal</button>
+                <button type="submit" class="btn btn--primary" disabled="@(Model.TransferTargets.Count == 0)">Transfer Sekarang</button>
+            </footer>
+        </form>
+    </dialog>
+}

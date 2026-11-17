@@ -1,0 +1,23 @@
+# .NET / Visual Studio / Rider / VS Code
+bin/
+obj/
+out/
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+publish/
+artifacts/
+
+# Logs & temporary files
+*.log
+*.tmp
+Thumbs.db
+.DS_Store
+
+# Local environment overrides
+appsettings.*.local.json
+*.Development.local.json

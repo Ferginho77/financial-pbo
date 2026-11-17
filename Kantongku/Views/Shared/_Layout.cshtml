@@ -1,0 +1,93 @@
+@{
+    var isAuth = User.Identity?.IsAuthenticated == true;
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
+    string NavClass(string controller, string? action = null) =>
+        string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase) &&
+        (action is null || string.Equals(currentAction, action, StringComparison.OrdinalIgnoreCase))
+            ? "nav__link is-active"
+            : "nav__link";
+    var displayName = isAuth ? User.GetDisplayName() : string.Empty;
+    var email = isAuth ? User.GetEmail() : string.Empty;
+}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0F172A" />
+    <title>@ViewData["Title"] · Kantongku</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/fintech.css" asp-append-version="true" />
+</head>
+<body>
+    <header class="topbar">
+        <div class="topbar__inner">
+            <a class="brand" asp-controller="Home" asp-action="Index" aria-label="Kantongku - Dashboard">
+                <span class="brand__mark">K</span>
+                <span class="brand__name">Kantongku</span>
+            </a>
+
+            @if (isAuth)
+            {
+                <nav class="nav" aria-label="Navigasi utama">
+                    <a class="@NavClass("Home", "Index")" asp-controller="Home" asp-action="Index">@Icons.Get("grid", 16) Dashboard</a>
+                    <a class="@NavClass("Pockets", "Create")" asp-controller="Pockets" asp-action="Create">@Icons.Get("wallet", 16) Kantong Baru</a>
+                    <a class="@NavClass("Categories")" asp-controller="Categories" asp-action="Index">@Icons.Get("tag", 16) Kategori</a>
+                </nav>
+
+                <div class="user-menu">
+                    <a class="user-chip @(string.Equals(currentController, "Account", StringComparison.OrdinalIgnoreCase) && string.Equals(currentAction, "Profile", StringComparison.OrdinalIgnoreCase) ? "is-active" : "")"
+                       asp-controller="Account" asp-action="Profile" title="Pengaturan profil & kata sandi">
+                        <span class="avatar" aria-hidden="true">@Formatting.Initials(displayName)</span>
+                        <span class="user-menu__meta">
+                            <strong>@displayName</strong>
+                            <span>@email</span>
+                        </span>
+                    </a>
+                    <form asp-controller="Account" asp-action="Logout" method="post">
+                        <button type="submit" class="icon-btn" title="Keluar" aria-label="Keluar">@Icons.Get("logout", 18)</button>
+                    </form>
+                </div>
+            }
+            else
+            {
+                <div class="topbar__actions">
+                    <a class="btn btn--ghost btn--sm" asp-controller="Account" asp-action="Login">Masuk</a>
+                    <a class="btn btn--primary btn--sm" asp-controller="Account" asp-action="Register">Daftar</a>
+                </div>
+            }
+        </div>
+    </header>
+
+    <main class="page">
+        @if (TempData["Success"] is string successMessage)
+        {
+            <div class="toast toast--success" role="status" data-toast>
+                <span class="toast__icon">@Icons.Get("check", 16)</span>
+                <span>@successMessage</span>
+                <button type="button" class="toast__close" data-toast-close aria-label="Tutup">@Icons.Get("x", 14)</button>
+            </div>
+        }
+        @if (TempData["Error"] is string errorMessage)
+        {
+            <div class="toast toast--error" role="alert" data-toast>
+                <span class="toast__icon">@Icons.Get("x", 16)</span>
+                <span>@errorMessage</span>
+                <button type="button" class="toast__close" data-toast-close aria-label="Tutup">@Icons.Get("x", 14)</button>
+            </div>
+        }
+
+        @RenderBody()
+    </main>
+
+    <footer class="footer">
+        <span>© @DateTime.Now.Year Kantongku · Kelola uang bersama, tanpa drama.</span>
+    </footer>
+
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
