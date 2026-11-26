@@ -12,11 +12,11 @@
 
 <form asp-action="CreateGroup" method="post" class="card inline-form" novalidate>
     <div class="inline-form__text">
-        <strong>Tambah kelompok baru</strong>
+        <strong>Tambah Kelompok Pengeluaran Baru</strong>
         <span class="muted small">Contoh: Investasi, Sosial, Pendidikan</span>
     </div>
-    <input type="text" name="name" class="input" maxlength="60" placeholder="Nama kelompok" required aria-label="Nama kelompok baru" />
-    <button type="submit" class="btn btn--primary">@Icons.Get("plus", 16) Tambah Kelompok</button>
+    <input type="text" name="name" class="input" maxlength="60" placeholder="Contoh: Tabungan Umroh" required aria-label="Nama kelompok baru" />
+    <button type="submit" class="btn btn--primary">@Icons.Get("plus", 16) Tambah</button>
 </form>
 
 @if (Model.Count == 0)
@@ -24,7 +24,7 @@
     <div class="card empty-state">
         <span class="empty-state__icon">@Icons.Get("tag", 28)</span>
         <h3>Belum ada kelompok kategori</h3>
-        <p>Tambahkan kelompok pertama Anda (misalnya "Primer") agar bisa mencatat pengeluaran.</p>
+        <p>Tambahkan jenis pengeluaran pertama Anda (misalnya "Primer") agar bisa mencatat pengeluaran.</p>
     </div>
 }
 else
