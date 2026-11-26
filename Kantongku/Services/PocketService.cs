@@ -8,18 +8,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Kantongku.Services;
 
-public class PocketService : IPocketService
+public class PocketService : AppServiceBase, IPocketService
 {
     public const int PageSize = 15;
 
     private static readonly string[] AllowedColors = { "navy", "amber", "emerald", "sky", "rose", "slate" };
 
-    private readonly AppDbContext _db;
-
-    public PocketService(AppDbContext db)
+    public PocketService(AppDbContext db) : base(db)
     {
-        _db = db;
     }
+
+    protected override string ServiceName => nameof(PocketService);
 
     // =====================================================================
     // Helper privat
@@ -31,12 +30,6 @@ public class PocketService : IPocketService
     {
         var c = (color ?? string.Empty).Trim().ToLowerInvariant();
         return AllowedColors.Contains(c) ? c : "navy";
-    }
-
-    private static string? CleanOptional(string? value)
-    {
-        var v = value?.Trim();
-        return string.IsNullOrEmpty(v) ? null : v;
     }
 
     private static decimal NormalizeAmount(decimal? amount) =>

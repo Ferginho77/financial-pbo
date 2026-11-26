@@ -2,10 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Kantongku.Models;
 
-public class Transaction
+public class Transaction : BaseEntity<long>
 {
-    public long Id { get; set; }
-
     public int PocketId { get; set; }
     public Pocket Pocket { get; set; } = null!;
 
@@ -54,4 +52,6 @@ public class Transaction
     public Guid? TransferGroupId { get; set; }
 
     public bool IsCredit => Type is TransactionType.Income or TransactionType.TransferIn;
+
+    public override string GetSummary() => $"{Type}: {Title} ({Amount:N0})";
 }

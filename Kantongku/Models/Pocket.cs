@@ -2,10 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Kantongku.Models;
 
-public class Pocket
+public class Pocket : BaseEntity<int>
 {
-    public int Id { get; set; }
-
     [Required, MaxLength(80)]
     public string Name { get; set; } = string.Empty;
 
@@ -30,4 +28,6 @@ public class Pocket
 
     public ICollection<PocketMember> Members { get; set; } = new List<PocketMember>();
     public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
+
+    public override string GetSummary() => $"{Name} (Saldo: {Balance:N0})";
 }

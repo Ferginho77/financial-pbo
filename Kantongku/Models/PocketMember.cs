@@ -1,9 +1,7 @@
 namespace Kantongku.Models;
 
-public class PocketMember
+public class PocketMember : BaseEntity<int>
 {
-    public int Id { get; set; }
-
     public int PocketId { get; set; }
     public Pocket Pocket { get; set; } = null!;
 
@@ -13,4 +11,6 @@ public class PocketMember
     public PocketRole Role { get; set; } = PocketRole.Viewer;
 
     public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
+
+    public override string GetSummary() => $"Pocket#{PocketId} User#{UserId} ({Role})";
 }

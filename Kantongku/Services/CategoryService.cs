@@ -5,16 +5,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Kantongku.Services;
 
-public class CategoryService : ICategoryService
+public class CategoryService : AppServiceBase, ICategoryService
 {
     private const int MaxNameLength = 60;
 
-    private readonly AppDbContext _db;
-
-    public CategoryService(AppDbContext db)
+    public CategoryService(AppDbContext db) : base(db)
     {
-        _db = db;
     }
+
+    protected override string ServiceName => nameof(CategoryService);
 
     private static ServiceResult? ValidateName(string? name, out string clean)
     {
