@@ -35,48 +35,52 @@
 }
 
 <div class="page-head">
-    <div>
+    <div class="page-head__text">
         <p class="eyebrow">@DateTime.Now.ToIdLongDate()</p>
         <h1>@greeting, @firstName</h1>
         <p class="muted">Ringkasan seluruh kantong pribadi dan kantong bersama Anda.</p>
     </div>
-    <a class="btn btn--primary" asp-controller="Pockets" asp-action="Create">@Icons.Get("plus", 16) Kantong Baru</a>
+    <a class="btn btn--primary page-head__cta" asp-controller="Pockets" asp-action="Create">
+        @Icons.Get("plus", 16) <span>Kantong Baru</span>
+    </a>
 </div>
 
 <section class="hero" aria-label="Ringkasan saldo">
     <div class="hero__main">
         <span class="hero__label">Total saldo gabungan</span>
         <h2 class="hero__amount">@Model.TotalBalance.ToRupiah()</h2>
+        
         <div class="hero__split">
-            <div>
+            <div class="hero__split-item">
                 <span>Kantong Pribadi</span>
                 <strong>@Model.PersonalBalance.ToRupiah()</strong>
             </div>
-            <div>
+            <div class="hero__split-item">
                 <span>Kantong Bersama</span>
                 <strong>@Model.SharedBalance.ToRupiah()</strong>
             </div>
-            <div>
+            <div class="hero__split-item hero__split-item--full">
                 <span>Arus Kas (@Model.Month.ToIdMonth())</span>
-                <strong class="@(Model.NetCashflow >= 0 ? "text-positive-light" : "text-amber-light")">
+                <strong class="@(Model.NetCashflow >= 0 ? "text-positive-light" : "text-rose-light")">
                     @(Model.NetCashflow >= 0 ? "+" : "-") @Math.Abs(Model.NetCashflow).ToRupiah()
                 </strong>
             </div>
         </div>
     </div>
+
     <div class="hero__stats">
         <div class="hero-stat">
             <span class="hero-stat__icon hero-stat__icon--in">@Icons.Get("arrow-down-left", 16)</span>
-            <div>
-                <span>Pemasukan @Model.Month.ToIdMonth()</span>
+            <div class="hero-stat__body">
+                <span>Pemasukan</span>
                 <strong class="text-positive-light">+ @Model.MonthIncome.ToRupiah()</strong>
             </div>
         </div>
         <div class="hero-stat">
             <span class="hero-stat__icon hero-stat__icon--out">@Icons.Get("arrow-up-right", 16)</span>
-            <div>
-                <span>Pengeluaran @Model.Month.ToIdMonth()</span>
-                <strong>- @Model.MonthExpense.ToRupiah()</strong>
+            <div class="hero-stat__body">
+                <span>Pengeluaran</span>
+                <strong class="text-rose-light">- @Model.MonthExpense.ToRupiah()</strong>
             </div>
         </div>
     </div>
@@ -147,11 +151,11 @@
                     <div class="pocket-card__actions">
                         @if (p.CanIncome)
                         {
-                            <a class="btn btn--soft btn--sm" asp-controller="Pockets" asp-action="Details" asp-route-id="@p.Id" asp-route-open="income">+ Pemasukan</a>
+                            <a class="btn btn--soft btn--sm" asp-controller="Pockets" asp-action="Details" asp-route-id="@p.Id" asp-route-open="income">+ Masuk</a>
                         }
                         @if (p.CanSpend)
                         {
-                            <a class="btn btn--soft btn--sm" asp-controller="Pockets" asp-action="Details" asp-route-id="@p.Id" asp-route-open="expense">+ Pengeluaran</a>
+                            <a class="btn btn--soft btn--sm" asp-controller="Pockets" asp-action="Details" asp-route-id="@p.Id" asp-route-open="expense">+ Keluar</a>
                         }
                         @if (p.CanIncome)
                         {
